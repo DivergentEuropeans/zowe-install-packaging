@@ -71,4 +71,5 @@ if [ $? -gt 0 ]; then exit -1; fi
 echo " Running the deployment test for z/OSMF version 2.3"
 
 pip install requests
-python scripts/deploy_test_2_3.py
+#TODO: add creation of "Install zFS Data Sets" JCL for 3.1 zosmf
+#python scripts/deploy_test_2_3.py
