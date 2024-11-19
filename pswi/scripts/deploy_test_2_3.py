@@ -29,8 +29,9 @@ class Deploy_test:
 
         self.definition = izud["izud.pswi.descriptor"]
         self.datasets = self.definition["datasets"]
+        self.work_mount = work_mount
         self.swi_name = swi_name
-        
+        self.version = int(self.definition["version"])
         for dataset in self.datasets:
             if dataset["zonedddefs"] is not None:
                 for zonedddef in dataset["zonedddefs"]:
@@ -38,6 +39,10 @@ class Deploy_test:
                         if dddef["path"] is not None:
                             self.no_dddef = dddef["dddef"]
                             self.old_mountp = dataset["mountpoint"]
+                            self.tracks = int(dataset["tracks"])
+                            self.secondary = int(dataset["secondary"])
+                            self.new_zfs = self.new_name(dataset["dsname"])
+                            self.zfs_archid = dataset["archid"]
         
         for zone in self.definition["zones"]:
             if zone["type"] == "TARGET":
@@ -56,7 +61,7 @@ class Deploy_test:
 //SYSIN    DD *
 <GIMUNZIP>
 <TEMPDS volume="{2}"> </TEMPDS> 
-""".format(work_mount,self.pswi_path,self.volume)
+""".format(self.work_mount,self.pswi_path,self.volume)
         self.job1_end = """</GIMUNZIP>
 /*        
         """
@@ -88,7 +93,14 @@ class Deploy_test:
       REP TZONE({0}) RELATED({1}).
 """.format(self.tzone, self.dzone)
         
-        self.job3_path = """   ZONEEDIT DDDEF.
+        self.job3_path=""
+        if self.version >= 9:
+          self.job3_path = """      REP DDDEF({0}) PATH(
+ '{1}'
+     ).
+""".format(self.no_dddef, self.new_mountp)
+        else:
+          self.job3_path = """   ZONEEDIT DDDEF.
       CHANGE PATH(
  '{0}'*,
  '{1}'*).
@@ -99,10 +111,66 @@ class Deploy_test:
     UCLIN.
       REP DZONE({0}) RELATED({1}).
 """.format(self.dzone, self.tzone)
+    
+        self.job4 = """//UNZIP    EXEC PGM=GIMUNZIP,PARM='HASH=NO',COND=(0,LT)
+//SYSUT3   DD UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT4   DD UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SMPWKDIR DD PATH='{0}'
+//SMPOUT   DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SMPDIR   DD PATHDISP=KEEP,
+//             PATH='{1}'
+//SYSIN DD *
+<GIMUNZIP>
+<ARCHDEF archid="{2}"
+        newname="{3}"
+        preserveid="YES" replace="YES"/>
+</GIMUNZIP>
+    """.format(self.work_mount + "/workdir", self.pswi_path, self.zfs_archid, self.work_mount + "/" + self.new_zfs + ".#")
+      
+    def create_zfs(self):
+      new_zfs = {"cylsPri": int(self.tracks/15),"cylsSec": int(self.secondary/15),"volumes":[ self.volume ]}
+      new_zfs_url = "{0}/zosmf/restfiles/mfs/zfs/{1}".format(self.url, self.new_zfs + ".%23")
+      new_zfs_resp = requests.post(new_zfs_url, headers=self.headers, auth=(user, password), data=json.dumps(new_zfs),
+                                verify=False)
+      print(new_zfs_resp)
+      if new_zfs_resp.status_code != 201:
+        print("Status code: {0}".format(new_zfs_resp.status_code))
+        raise requests.exceptions.RequestException(new_zfs_resp.text)
+    
+    def create_directory(self):
+      dir_name = self.work_mount + "/" + self.new_zfs + ".%23"
+      dir_parms = {"type":"directory","mode":"rwxr-xrwx"}
+      dir_url = "{0}/zosmf/restfiles/fs{1}".format(self.url, dir_name)
+      dir_resp = requests.post(dir_url, headers=self.headers, auth=(user, password), data=json.dumps(dir_parms),
+                                verify=False)
+
+      if dir_resp.status_code != 201:
+        print("Status code: {0}".format(dir_resp.status_code))
+        raise requests.exceptions.RequestException(dir_resp.text)
+
+    def mount(self, dir=None, zfs=None, action="mount"):
+      if dir is None and zfs is None:
+        dir = self.work_mount + "/" + self.new_zfs + ".#"
+        zfs = self.new_zfs + ".%23"
+        action = "unmount"
+      elif dir is None or zfs is None:
+        raise TypeError("Wrong arguments")
+      
+      mount_parms = {"action": action, "mount-point": dir, "fs-type": "zFS", "mode": "rdwr"}
+      mount_url = "{0}/zosmf/restfiles/mfs/{1}".format(self.url, zfs)
+      mount_resp = requests.put(mount_url, headers=self.headers, auth=(user, password), data=json.dumps(mount_parms),
+                                verify=False)
+
+      if mount_resp.status_code != 204:
+        print("Status code: {0}".format(mount_resp.status_code))
+        raise requests.exceptions.RequestException(mount_resp.text)
 
     def archdef(self, dataset):
         if dataset["dsname"].endswith(".CSI"):
             new_name = self.new_name(dataset["dsname"])
+        elif dataset["dsname"].endswith(".ZFS") and self.version >= 9:
+          return ""
         else:
             new_name = self.new_name(dataset["dsname"]) + ".#"
         return """<ARCHDEF archid="{0}"
@@ -157,6 +225,13 @@ class Deploy_test:
             jcl = jcl + self.archdef(dataset)
         return jcl + self.job1_end
     
+    def zfsInstall_job(self):
+      new_dir = self.work_mount + "/" + self.new_zfs + ".#"
+      self.create_zfs()
+      self.create_directory()
+      self.mount(new_dir, self.new_zfs + ".%23", "mount")
+      return self.jobst1 + self.jobst2 + self.job4
+      
     def second_job(self):
         jcl = self.jobst1 + self.jobst2 + self.job2
         for dataset in self.datasets:
@@ -172,19 +247,16 @@ class Deploy_test:
         jcl = jcl + self.job3_endzone + self.job3_target 
         for dataset in self.datasets:
             jcl = jcl + self.zone_template(dataset, self.target)
-        jcl = jcl + self.job3_endzone + self.job3_path + self.job3_distribution
+        if self.version >= 9:
+          jcl = jcl + self.job3_path + self.job3_endzone + self.job3_distribution
+        else:
+          jcl = jcl + self.job3_endzone + self.job3_path + self.job3_distribution
         for dataset in self.datasets:
             jcl = jcl + self.zone_template(dataset, self.dlib)
         return jcl + self.job3_endzone + "/*"
 
     def create_swi(self):
-        mount_parms = {"action": "mount", "mount-point": self.new_mountp, "fs-type": "zFS", "mode": "rdwr"}
-        mount_url = "{0}/zosmf/restfiles/mfs/{1}".format(self.url, self.zfs)
-        mount_resp = requests.put(mount_url, headers=self.headers, auth=(user, password), data=json.dumps(mount_parms),
-                                  verify=False)
-        if mount_resp.status_code != 204:
-            print("Status code: {0}".format(mount_resp.status_code))
-            raise requests.exceptions.RequestException(mount_resp.text)
+        self.mount(self.new_mountp, self.zfs, "mount")
         
         parms = {
             "name": self.swi_name,
@@ -249,25 +321,30 @@ if __name__ == "__main__":
     
     deploy = Deploy_test(url, user, password, system, hlq, jobst1, jobst2, volume, tzone, dzone, mount, pswi_path, work_path, swi_name)
 
-    first = deploy.first_job()
-    second = deploy.second_job()
-    third = deploy.third_job()
+    unzip_job = deploy.first_job()
+    install_zfs = deploy.zfsInstall_job()
+    rename_datasets = deploy.second_job()
+    update_csi = deploy.third_job()
     
     try:
         submit_jcl = glob.glob('./*/submit_jcl.sh')[0]
     except IndexError:
         raise FileNotFoundError("\"submit_jcl.sh\" for submitting JCLs wasn't found. Make sure that it is in a subfolder of {0}".format(os.getcwd()))
-    
-    ec1 = subprocess.call(["sh", submit_jcl , first])
-    if ec1 != 0:
-        raise OSError("The first job failed.")
-    ec2 = subprocess.call(["sh", submit_jcl, second])
-    if ec2 != 0:
-        raise OSError("The second job failed.")
-    ec3 = subprocess.call(["sh", submit_jcl, third])
-    if ec3 != 0:
-        raise OSError("The third job failed.")
-    
+
+    unzip_rc = subprocess.call(["sh", submit_jcl , unzip_job])
+    if unzip_rc != 0:
+        raise OSError("The unzip datasets job failed.")
+    install_rc = subprocess.call(["sh", submit_jcl , install_zfs])
+    if install_rc != 0:
+        raise OSError("The install zFS datasets job failed.")
+    deploy.mount()  # unmount
+    rename_rc = subprocess.call(["sh", submit_jcl, rename_datasets])
+    if rename_rc != 0:
+        raise OSError("The rename datasets job failed.")
+    update_rc = subprocess.call(["sh", submit_jcl, update_csi])
+    if update_rc != 0:
+        raise OSError("The update CSI job failed.")
+
     deploy.create_swi()
     print("Portable software instance deployed successfully!")
 

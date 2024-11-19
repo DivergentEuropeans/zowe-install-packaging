@@ -136,11 +136,11 @@ if [ $presmpe -eq 0 ]; then
         sh 05_test.sh
         test=$?
 
-        #if [ $test -eq 0 ]; then
+        if [ $test -eq 0 ]; then
           #test the workflows
-          #sh 051_test_workflows.sh
-          #wf_test=$?
-        #fi
+          sh 051_test_workflows.sh
+          wf_test=$?
+        fi
         # Cleanup after the test
         sh 06_test_cleanup.sh
       fi
