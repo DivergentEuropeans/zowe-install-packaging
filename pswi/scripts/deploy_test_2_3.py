@@ -113,23 +113,69 @@ class Deploy_test:
     UCLIN.
       REP DZONE({0}) RELATED({1}).
 """.format(self.dzone, self.tzone)
-
-    self.job4 = """//UNZIP    EXEC PGM=GIMUNZIP,PARM='HASH=NO',COND=(0,LT)
+    
+    self.zfs_job = """//ALLOCDS  EXEC PGM=IDCAMS,COND=(0,LT)
+//SYSPRINT DD SYSOUT=*
+//SYSIN    DD *
+ DEFINE CLUSTER( +
+          NAME({0}) +
+          CYLINDERS({1},{2}) +
+          VOLUME({3}) +
+          ZFS +
+          SHAREOPTIONS(2))
+/*
+//MOUNT1    EXEC PGM=BPXBATCH,COND=(0,LT)
+//STDOUT   DD SYSOUT=*
+//STDERR   DD SYSOUT=*
+//STDPARM  DD *
+SH ;
+dsn='{0}';
+mpdir={4}/$dsn;
+if [ -e "$mpdir" ]; then;
+ rm -r $mpdir;
+fi;
+if [ ! -e "$mpdir" ]; then;
+ echo "Work directory $mpdir will be created.";
+ umask 077 ;
+ mkdir -p -m 700 "$mpdir";
+ rc=$?;
+ if [ $rc -ne 0 ]; then;
+   echo "** mkdir command failure: rc=$rc";
+   exit $rc;
+ fi;
+fi;
+echo "Format the file system $dsn.";
+zfsadm format -aggregate $dsn;
+rc=$?;
+if [ $rc -ne 0 ]; then;
+ echo "** zfsadm format command failure: rc=$rc";
+ exit $rc;
+fi;
+echo "Mount $dsn on $mpdir.";
+/usr/sbin/mount -t ZFS -s nosecurity -f $dsn $mpdir;
+if [ $rc -ne 0 ]; then;
+ echo "** mount command failure: rc=$rc";
+ exit $rc;
+fi;
+mkdir -p {4}/workdir;
+/*
+//UNZIP    EXEC PGM=GIMUNZIP,PARM='HASH=NO',COND=(0,LT)
 //SYSUT3   DD UNIT=SYSALLDA,SPACE=(CYL,(1,1))
 //SYSUT4   DD UNIT=SYSALLDA,SPACE=(CYL,(1,1))
-//SMPWKDIR DD PATH='{0}'
+//SMPWKDIR DD PATH='{4}/workdir'
 //SMPOUT   DD SYSOUT=*
 //SYSPRINT DD SYSOUT=*
 //SMPDIR   DD PATHDISP=KEEP,
-//             PATH='{1}'
+//             PATH='{5}'
 //SYSIN DD *
 <GIMUNZIP>
-<ARCHDEF archid="{2}"
-        newname="{3}"
+<ARCHDEF archid="{6}"
+        newname="{7}"
         preserveid="YES" replace="YES"/>
 </GIMUNZIP>
-    """.format(self.work_mount + "/workdir", self.pswi_path, self.zfs_archid,
-               self.work_mount + "/" + self.new_zfs + ".#")
+/*
+    """.format(self.new_zfs + ".#", int(self.tracks / 15), int(self.secondary / 15), self.volume, self.work_mount,
+               self.pswi_path, self.zfs_archid, self.work_mount + "/" + self.new_zfs + ".#")
 
   def create_zfs(self):
     new_zfs = {"cylsPri": int(self.tracks / 15), "cylsSec": int(self.secondary / 15), "volumes": [self.volume]}
@@ -229,12 +275,7 @@ class Deploy_test:
     return jcl + self.job1_end
 
   def zfsInstall_job(self):
-    new_dir = self.work_mount + "/" + self.new_zfs + ".#"
-    self.create_zfs()
-    self.create_directory(self.work_mount + "/" + self.new_zfs + ".%23")
-    self.create_directory(self.work_mount + "/workdir")
-    self.mount(new_dir, self.new_zfs + ".%23", "mount")
-    return self.jobst1 + self.jobst2 + self.job4
+    return self.jobst1 + self.jobst2 + self.zfs_job
 
   def second_job(self):
     jcl = self.jobst1 + self.jobst2 + self.job2
