@@ -4,7 +4,7 @@
 IDENTIFIER="${1}/${2}"
 JOBNAME=${1}
 JOB_OUTPUT_DIR=$LOG_DIR/jobs/output
-JOB_OUTPUT_FILE=$JOB_OUTPUT_DIR/$JOBNAME_$2
+JOB_OUTPUT_FILE=$JOB_OUTPUT_DIR/$JOBNAME
 
 RESP=$(curl -s ${BASE_URL}/zosmf/restjobs/jobs/${IDENTIFIER}/files -k -X "GET" -H "Content-Type: application/json" -H "X-CSRF-ZOSMF-HEADER: A" --user $ZOSMF_USER:$ZOSMF_PASS)
 sh scripts/check_response.sh "$RESP" $?
@@ -20,4 +20,4 @@ done <urls
 
 rm urls
 
-echo "Spool files can be found in the ${JOBNAME} directory."
+echo "Spool files can be found in the ${JOB_OUTPUT_DIR} directory."
