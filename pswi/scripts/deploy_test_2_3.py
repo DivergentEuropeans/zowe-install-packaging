@@ -100,7 +100,7 @@ class Deploy_test:
       self.job3_path = """      REP DDDEF({0}) PATH(
  '{1}'
      ).
-""".format(self.no_dddef, self.new_mountp)
+""".format(self.no_dddef, self.new_mountp + "/")
     else:
       self.job3_path = """   ZONEEDIT DDDEF.
       CHANGE PATH(
