@@ -27,6 +27,11 @@ jobs:
         output: lychee_output.json
         args: --config ./.github/lychee.toml --no-progress --verbose --max-retries 10 'bin/**/*' 'smpe/**/*' 'workflows/**/*'
 
+    - name: Output failed links in console
+      id: quick-output
+      run: |
+        jq .fail_map lychee_output.json
+
     - name: Publish Output
       id: publish
       if: always()
