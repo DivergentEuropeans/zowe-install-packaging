@@ -182,7 +182,6 @@ mkdir -p {4}/workdir;
     new_zfs_url = "{0}/zosmf/restfiles/mfs/zfs/{1}".format(self.url, self.new_zfs + ".%23")
     new_zfs_resp = requests.post(new_zfs_url, headers=self.headers, auth=(user, password), data=json.dumps(new_zfs),
                                  verify=False)
-    print("When this script fail this zFS {0} might not be unmounted!%23 is #".format(self.new_zfs + ".%23"))
     if new_zfs_resp.status_code != 201:
       print("Status code: {0}".format(new_zfs_resp.status_code))
       raise requests.exceptions.RequestException(new_zfs_resp.text)
