@@ -1,0 +1,36 @@
+permissions: read-all
+
+name: Link Check CI
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches:
+    - 'v3.x/staging'
+    - 'v2.x/staging'
+  workflow_dispatch:
+
+jobs:
+  lychee-link-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+    - name: Link Checker
+      id: lychee
+      uses: lycheeverse/lychee-action@f81112d0d2814ded911bd23e3beaa9dda9093915 # v2.1.0
+      with:
+        fail: true
+        format: json
+        output: lychee_output.json
+        args: --config ./.github/lychee.toml --no-progress --verbose --max-retries 10 'bin/**/*' 'smpe/**/*' 'workflows/**/*'
+
+    - name: Publish Output
+      id: publish
+      if: always()
+      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+      with: 
+        name: lychee_results.json
+        path: lychee_output.json
