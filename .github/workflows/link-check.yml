@@ -29,8 +29,13 @@ jobs:
 
     - name: Output failed links in console
       id: quick-output
+      if: always()
       run: |
-        jq .fail_map lychee_output.json
+        if [[ -f "lychee_output.json" ]]; then
+          jq .fail_map lychee_output.json
+        else
+          echo "lychee command failed and didn't produce output"
+        fi
 
     - name: Publish Output
       id: publish
