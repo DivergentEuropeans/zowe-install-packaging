@@ -1,3 +1,6 @@
+# This link checker focuses on covering end-user facing links, not developer documentation.
+#   This means we cover the smp/e, pswi, and zwe content.
+# The lychee toml files are set to ignore links which popped up in comments or variables.
 permissions: read-all
 
 name: Link Check CI
