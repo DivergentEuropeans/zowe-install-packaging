@@ -293,17 +293,17 @@ echo "Showing EXPORT JCL how it looks before the change"
 #else
 echo "Changing jobcard and adding SYSAFF"
 sed "s|//IZUD01EX JOB (ACCOUNT),'NAME'|$JOBST1\n$JOBST2|g" EXPORT >EXPJCL0
-sed "s|//.*gimzipInputFile.*,|<FILEDEF name=\"ZWE.PSWI.AZWE003.ZFS\"|g" EXPJCL0 >EXPJCL1
-sed "s|//         FILEDATA=TEXT|         archid=\"ZOS003.ZWE.PSWI.AZWE003.ZFS\"/>|g" EXPJCL1 >EXPJCL2
-sed "s|//         DD \*||g" EXPJCL2 >EXPJCL
+#sed "s|//.*gimzipInputFile.*,|<FILEDEF name=\"ZWE.PSWI.AZWE003.ZFS\"|g" EXPJCL0 >EXPJCL1
+#sed "s|//         FILEDATA=TEXT|         archid=\"ZOS003.ZWE.PSWI.AZWE003.ZFS\"/>|g" EXPJCL1 >EXPJCL2
+#sed "s|//         DD \*||g" EXPJCL2 >EXPJCL
 # sed "s|ZOS003.ZWE.PSWI.|ZWE.PSWI.|g" EXPJCL3 >EXPJCL
 
 #fi
 
-sh scripts/submit_jcl.sh "$(cat EXPJCL)"
+sh scripts/submit_jcl.sh "$(cat EXPJCL0)"
 if [ $? -gt 0 ]; then exit -1; fi
 
-rm ./EXPJCL
+rm ./EXPJCL0
 rm ./EXPORT
 
 # Pax the directory
@@ -333,5 +333,4 @@ get ${SWI_NAME}.pax.Z
 EOF
 cd ../pswi
 
-#TODO: redirect everything to $log/x ?
 #TODO: Check why there is name in mountpoints responses and it still doesn't show (although the mount points are different so it's good it is not doing anything)
