@@ -17,7 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check for changed files which may require HOLDDATA
+      - name: List changed files which are candidates for HOLDDATA
         id: changed-files-yaml
         uses: tj-actions/changed-files@v45
         with:
@@ -30,7 +30,7 @@ jobs:
 
       # If there's a change to SAMP or EXEC files and no matching holddata, fail workflow.
       # We can't know if there must be HOLDDATA in this case, so this WF can never be a required check.
-      - name: Run step if test file(s) change
+      - name: Check for changed files without matching holddata
         if: ${{ steps.changed-files-yaml.outputs.src_any_changed == 'true' && steps.changed-files-yaml.outputs.hold_any_changed == 'false' }} 
         env:
           TEST_ALL_CHANGED_FILES: ${{ steps.changed-files-yaml.outputs.src_all_changed_files }}
