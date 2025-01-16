@@ -1,0 +1,41 @@
+name: Discover HOLDDATA 
+
+permissions: read-all
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: 
+      - v3.x/staging
+      - v2.x/staging
+
+jobs:
+  check-manifest:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for changed files which may require HOLDDATA
+        id: changed-files-yaml
+        uses: tj-actions/changed-files@v45
+        with:
+          files_yaml: |
+            hold:
+              - smpe/bld/service/current-hold-*.txt
+            src:
+              - files/SZWEEXEC/**
+              - files/SZWESAMP/**
+
+      # If there's a change to SAMP or EXEC files and no matching holddata, fail workflow.
+      # We can't know if there must be HOLDDATA in this case, so this WF can never be a required check.
+      - name: Run step if test file(s) change
+        if: ${{ steps.changed-files-yaml.outputs.src_any_changed == 'true' && steps.changed-files-yaml.outputs.hold_any_changed == 'false' }} 
+        env:
+          TEST_ALL_CHANGED_FILES: ${{ steps.changed-files-yaml.outputs.src_all_changed_files }}
+        run: |
+          echo "One or more SAMP or EXEC file(s) have changed."
+          echo "This may require HOLDDATA to be created."
+          echo "Files changed: $TEST_ALL_CHANGED_FILES"
+          exit 1
