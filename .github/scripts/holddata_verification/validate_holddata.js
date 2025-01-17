@@ -3,13 +3,16 @@
 
 const core = require('@actions/core');
 
-if (process.env['HOLDDATA_FILES'] == null) {
+if (process.env['HOLDDATA_FILES'] == null || 
+    process.env['HOLDDATA_FILES'].trim().length == 0) {
   core.setFailed('This script requires the HOLDDATA_FILES env to be set.');
   return;
 }
 
+core.info(`Checking HOLDDATA: ${process.env.HOLDDATA_FILES}`);
+
 const errors = [];
-for (const holdDataFile of process.env.HOLDDATA_FILES.split(',')) {
+for (const holdDataFile of process.env.HOLDDATA_FILES.trim().split(' ')) {
 
   const fs = require('fs');
 
@@ -53,4 +56,6 @@ for (const holdDataFile of process.env.HOLDDATA_FILES.split(',')) {
 if (errors.length > 0) {
   core.error(JSON.stringify(errors));
   core.setFailed(`HOLDDATA has errors. See above.`);
+} else {
+  core.info(`HOLDDATA has no errors.`);
 }
