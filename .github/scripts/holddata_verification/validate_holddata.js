@@ -33,8 +33,11 @@ for (const holdDataFile of process.env.HOLDDATA_FILES.trim().split(' ')) {
     if (line.startsWith('*')) {
       continue;
     }
-    if (line.includes('/*')) {
-      errors.push({file: holdDataFile, error: `HOLDDATA has the invalid character sequence '/*' on line ${i+1}.`});
+    if (line.includes('/*') || line.includes('*/')) {
+      errors.push({file: holdDataFile, error: `HOLDDATA has the invalid comment sequence on line ${i+1}. Either '/*' or '*/'`});
+    }
+    if (line.includes('~')) { 
+      errors.push({file: holdDataFile, error: `HOLDDATA has the invalid character '~' on line ${i+1}. This character is reserved by automation for use in sed and should not be used.`});
     }
     for (let j = 0; j < line.length; j++) {
       if (line.charAt(j) === '(') {
