@@ -6,7 +6,6 @@ which reside outside the `zowe.runtimeDirectory`. These are typically `zowe.work
 `zowe.logDirectory` and certificates directories.
 
 Java is required to run the hash utility. Make sure one of the following is set:
-* `java.home` in `zowe.yaml` configuration
 * Environment variable `JAVA_HOME`
 * Environment variable `PATH` which includes `java`.
 
