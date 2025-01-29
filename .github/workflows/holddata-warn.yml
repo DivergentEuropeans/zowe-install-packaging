@@ -31,8 +31,12 @@ jobs:
             hold:
               - smpe/bld/service/current-hold-*.txt
             src:
+              - example-zowe.yaml
+              - files/defaults.yaml
               - files/SZWEEXEC/**
               - files/SZWESAMP/**
+              - schemas/**
+              - smpe/bld/SMPMCS.txt
 
       # If there's a change to SAMP or EXEC files and no matching holddata, fail workflow.
       # We can't know if there must be HOLDDATA in this case, so this WF can never be a required check.
