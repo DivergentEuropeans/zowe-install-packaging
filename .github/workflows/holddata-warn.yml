@@ -33,10 +33,13 @@ jobs:
             src:
               - example-zowe.yaml
               - files/defaults.yaml
+              - files/sca/zowe_base_sca.json
               - files/SZWEEXEC/**
               - files/SZWESAMP/**
               - schemas/**
               - smpe/bld/SMPMCS.txt
+              - workflows/files/ZWEKRIN*
+              - workflows/templates/ZWESECU*
 
       # If there's a change to SAMP or EXEC files and no matching holddata, fail workflow.
       # We can't know if there must be HOLDDATA in this case, so this WF can never be a required check.
