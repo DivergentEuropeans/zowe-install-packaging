@@ -440,6 +440,37 @@
                   ]
                 }
               }
+            },
+            "infinispan": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "VSAM configurations if you are using VSAM as Caching Service storage",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "description": "VSAM data set with Record-Level-Sharing enabled or not",
+                  "enum": ["NONRLS", "RLS"],
+                  "default": "NONRLS"
+                },
+                "volume": {
+                  "type": "string",
+                  "description": "Volume name if you are using VSAM in NONRLS mode"
+                },
+                "storageClass": {
+                  "type": "string",
+                  "description": "Storage class name if you are using VSAM in RLS mode"
+                },
+                "name": {
+                  "anyOf": [
+                    { "type": "null" },
+                    { "type": "string", "maxLength": 0 },
+                    {
+                      "$ref": "/schemas/v2/server-common#zoweDatasetVsam",
+                      "description": "Data set name. Must match components.caching-service.storage.vsam.name"
+                    }
+                  ]
+                }
+              }
             }
           }
         },
